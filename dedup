@@ -1,32 +1,4 @@
-        return {
-"""
-dedup.py
-========
-File deduplication and verification system built on the cuckoo filter.
 
-THE BIG IDEA
-    Two files with the same content have the same SHA-256 hash. So to find
-    duplicates we only need to ask: "have I seen this hash before?"
-
-    The cuckoo filter answers that question quickly and with little memory.
-    But it can be wrong sometimes (a false positive), so a "yes" from the
-    filter is always double-checked in an exact record (a Python dictionary).
-
-    For each file:
-        1. Compute its SHA-256 hash.
-        2. Ask the cuckoo filter.
-              "NO"  -> definitely a new file. (Skip the exact record.)
-              "YES" -> look in the exact record to be sure.
-        3. If it is new, store it in both the filter and the exact record.
-
-    The exact record is saved to a JSON file, so the system remembers files
-    between runs.
-
-VERIFICATION (the second half of the topic)
-    check_file : "Is a file with this content already stored?"
-    verify_all : re-hash every stored file and report any that went MISSING
-                 or whose content has CHANGED (corrupted / modified).
-"""
 
 import hashlib
 import json
@@ -35,19 +7,32 @@ import os
 from cuckoo_filter import CuckooFilter
 
 
-def hash_file(path, chunk_size=65536):
+def clean_text(data):
     """
-    SHA-256 of a file's content.
-    We read in small chunks so even a huge file does not fill the memory.
+    Remove whitespace differences so these all count as the SAME content:
+        "hello"   " hello"   "hello "   "hello\\n"   "hello\\r\\n"
+    How: split the text into words and join them with ONE space.
+    That removes leading/trailing spaces and shrinks any run of
+    spaces, tabs and new lines into a single space.
+
+    Only done for text files. If the file is not readable text (a photo,
+    a zip ...) we return it unchanged, so binary files are compared exactly.
     """
-    sha = hashlib.sha256()
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data                       # binary file: leave as it is
+    return " ".join(text.split()).encode("utf-8")
+
+
+def hash_file(path):
+    """
+    SHA-256 of a file's content, ignoring whitespace differences.
+    (Whole file is read into memory, which is fine for a course project.)
+    """
     with open(path, "rb") as f:
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                break
-            sha.update(chunk)
-    return sha.hexdigest()
+        data = f.read()
+    return hashlib.sha256(clean_text(data)).hexdigest()
 
 
 class DedupSystem:
