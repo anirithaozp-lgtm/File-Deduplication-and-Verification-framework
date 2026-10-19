@@ -1,0 +1,200 @@
+        return {
+"""
+dedup.py
+========
+File deduplication and verification system built on the cuckoo filter.
+
+THE BIG IDEA
+    Two files with the same content have the same SHA-256 hash. So to find
+    duplicates we only need to ask: "have I seen this hash before?"
+
+    The cuckoo filter answers that question quickly and with little memory.
+    But it can be wrong sometimes (a false positive), so a "yes" from the
+    filter is always double-checked in an exact record (a Python dictionary).
+
+    For each file:
+        1. Compute its SHA-256 hash.
+        2. Ask the cuckoo filter.
+              "NO"  -> definitely a new file. (Skip the exact record.)
+              "YES" -> look in the exact record to be sure.
+        3. If it is new, store it in both the filter and the exact record.
+
+    The exact record is saved to a JSON file, so the system remembers files
+    between runs.
+
+VERIFICATION (the second half of the topic)
+    check_file : "Is a file with this content already stored?"
+    verify_all : re-hash every stored file and report any that went MISSING
+                 or whose content has CHANGED (corrupted / modified).
+"""
+
+import hashlib
+import json
+import os
+
+from cuckoo_filter import CuckooFilter
+
+
+def hash_file(path, chunk_size=65536):
+    """
+    SHA-256 of a file's content.
+    We read in small chunks so even a huge file does not fill the memory.
+    """
+    sha = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            sha.update(chunk)
+    return sha.hexdigest()
+
+
+class DedupSystem:
+    def __init__(self, index_file="index.json", expected_files=1000):
+        self.index_file = index_file
+        self.expected_files = expected_files
+
+        # exact record:  hash -> {"path": ..., "size": ...}
+        self.records = {}
+        self.filter = None
+
+        # counters used in the report
+        self.stats = {"scanned": 0, "new": 0, "duplicates": 0,
+                      "already_indexed": 0, "filter_hits": 0,
+                      "false_positives": 0}
+
+        self._load()
+
+    # ------------------------------------------------------------------
+    # Saving, loading and building the filter
+    # ------------------------------------------------------------------
+    def _load(self):
+        """Read the saved record (if any) and build the filter from it."""
+        if os.path.exists(self.index_file):
+            with open(self.index_file, "r") as f:
+                self.records = json.load(f)
+        self._build_filter()
+
+    def save(self):
+        with open(self.index_file, "w") as f:
+            json.dump(self.records, f, indent=2)
+
+    def _build_filter(self):
+        """
+        Make a filter big enough for all stored files.
+        If it still turns out too small, double the size and try again.
+        """
+        wanted = max(self.expected_files, len(self.records))
+        num_buckets = max(8, int(wanted / (4 * 0.80)))   # aim for 80% full
+        while True:
+            cf = CuckooFilter(num_buckets=num_buckets)
+            if all(cf.insert(digest) for digest in self.records):
+                self.filter = cf
+                return
+            num_buckets = cf.num_buckets * 2
+
+    # ------------------------------------------------------------------
+    # Deduplication
+    # ------------------------------------------------------------------
+    def add_file(self, path):
+        """
+        Process one file.
+        Returns (status, original_path) where status is one of:
+            "new"              first time we see this content
+            "duplicate"        same content as another stored file
+            "already_indexed"  this exact file was stored before
+        """
+        path = os.path.abspath(path)
+        digest = hash_file(path)
+        self.stats["scanned"] += 1
+
+        if self.filter.contains(digest):
+            self.stats["filter_hits"] += 1
+            if digest in self.records:                  # confirmed
+                original = self.records[digest]["path"]
+                if original == path:
+                    self.stats["already_indexed"] += 1
+                    return "already_indexed", original
+                self.stats["duplicates"] += 1
+                return "duplicate", original
+            self.stats["false_positives"] += 1          # filter was wrong
+
+        # It is a new file: remember it.
+        self.records[digest] = {"path": path, "size": os.path.getsize(path)}
+        if not self.filter.insert(digest):
+            self._build_filter()          # filter full -> rebuild bigger
+        self.stats["new"] += 1
+        return "new", path
+
+    def scan_folder(self, folder):
+        """
+        Process every file inside a folder (and its sub-folders).
+        Returns a list of (duplicate_path, original_path).
+        """
+        duplicates = []
+        for dirpath, _, filenames in os.walk(folder):
+            for name in sorted(filenames):
+                path = os.path.join(dirpath, name)
+                status, original = self.add_file(path)
+                if status == "duplicate":
+                    duplicates.append((os.path.abspath(path), original))
+        self.save()
+        return duplicates
+
+    # ------------------------------------------------------------------
+    # Verification
+    # ------------------------------------------------------------------
+    def check_file(self, path):
+        """
+        Is a file with this content already stored?
+        Returns (True, stored_path) or (False, None).
+        """
+        digest = hash_file(path)
+        if not self.filter.contains(digest):    # fast "definitely not"
+            return False, None
+        if digest in self.records:              # confirm with exact record
+            return True, self.records[digest]["path"]
+        return False, None
+
+    def verify_all(self):
+        """
+        Re-hash every stored file and compare with the hash we saved.
+        Returns two lists: missing files and changed (corrupted) files.
+        """
+        missing = []
+        changed = []
+        for digest, info in self.records.items():
+            path = info["path"]
+            if not os.path.isfile(path):
+                missing.append(path)
+            elif hash_file(path) != digest:
+                changed.append(path)
+        return missing, changed
+
+    # ------------------------------------------------------------------
+    # Removing a file from the system (uses the filter's DELETE)
+    # ------------------------------------------------------------------
+    def remove_file(self, path):
+        """Forget a stored file. Returns True if it was found."""
+        path = os.path.abspath(path)
+        for digest, info in self.records.items():
+            if info["path"] == path:
+                self.filter.delete(digest)
+                del self.records[digest]
+                self.save()
+                return True
+        return False
+
+    # ------------------------------------------------------------------
+    # Summary
+    # ------------------------------------------------------------------
+    def summary(self):
+        cf = self.filter
+        return {
+            "files_stored": len(self.records),
+            "filter_buckets": cf.num_buckets,
+            "filter_load_factor": round(cf.load_factor(), 3),
+            "filter_memory_bytes": cf.memory_bits() // 8,
+            "max_false_positive_rate": cf.max_false_positive_rate(),
+        }
