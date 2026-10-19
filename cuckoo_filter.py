@@ -1,34 +1,4 @@
-"""
-cuckoo_filter.py
-================
-A Cuckoo Filter written to be easy to read and explain.
 
-WHAT IS IT?
-    A cuckoo filter answers the question "Have I seen this item before?"
-    using very little memory. It can answer:
-        - "Definitely NOT present"   (always correct)
-        - "Probably present"         (very rarely wrong -> a "false positive")
-    Unlike a Bloom filter, it also supports DELETE.
-
-HOW IT WORKS (4 ideas)
-    1. Instead of storing the item, we store a tiny FINGERPRINT of it.
-    2. The filter is an array of BUCKETS. Each bucket holds a few fingerprints.
-    3. Every item has TWO possible buckets:
-           bucket1 = hash(item)
-           bucket2 = bucket1 XOR hash(fingerprint)
-       XOR has a neat property: doing it twice gets you back where you
-       started. So from bucket2 we can get back to bucket1 using only the
-       fingerprint (we do NOT need the original item).
-    4. INSERT: if one of the two buckets has room, put the fingerprint there.
-       If both are full, kick out a fingerprint that is already there and move
-       it to ITS other bucket (like a cuckoo bird pushing eggs out of a nest).
-       Repeat until someone finds room or we give up.
-
-IMPORTANT RULE
-    The number of buckets must be a power of 2 (8, 16, 1024 ...).
-    The XOR trick only works properly for powers of 2.
-    (The code rounds up for you.)
-"""
 
 import hashlib
 import random
