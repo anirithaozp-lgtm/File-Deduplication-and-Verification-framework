@@ -1,19 +1,12 @@
-
-
 import argparse
 import os
 import sys
 
 from dedup import DedupSystem, IndexCorruptError
 
-
 class IndexLockedError(Exception):
-   
-
 
 class IndexLock:
-  
-
     def __init__(self, index_file):
         self.path = os.path.abspath(index_file) + ".lock"
         self.fd = None
@@ -184,7 +177,6 @@ def main(argv=None):
         print(f"ERROR: {err.strerror or err}"
               + (f" ({err.filename})" if err.filename else ""))
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())
