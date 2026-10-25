@@ -5,6 +5,7 @@ import sys
 from dedup import DedupSystem, IndexCorruptError
 
 class IndexLockedError(Exception):
+    "index lock error"
 
 class IndexLock:
     def __init__(self, index_file):
