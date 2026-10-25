@@ -1,51 +1,12 @@
-"""
-main.py  -  command line program
-
-Usage:
-    python main.py scan   <folder>     find duplicate files in a folder
-    python main.py check  <file>       is this file's content already stored?
-    python main.py verify              check stored files for missing/changed
-    python main.py remove <file>       forget a stored file (file on disk is kept)
-    python main.py stats               show filter and index statistics
-
-Options:
-    --index my_index.json    use a different saved index file
-    --seed 42                make the filter's random choices repeatable
-
-  only for 'scan':
-    --rehash                 read every file again, even if size and modified
-                             time are unchanged
-    --accept-changes         accept whitespace-only edits as the new exact-bytes
-                             baseline (otherwise 'verify' keeps reporting them)
-    --delete-duplicates      SHOW which byte-for-byte identical copies would be
-                             deleted (nothing is deleted yet)
-    --yes                    with --delete-duplicates: really delete them
-    --min-size N             with --delete-duplicates: never delete files smaller
-                             than N bytes (default 1, so empty files are kept)
-
-Exit codes:  0 = all good,  1 = problems found / some files failed,
-             2 = the index file is damaged (it is never overwritten),
-             3 = another run is using the same index (lock file exists).
-"""
-
 import argparse
 import os
 import sys
 
 from dedup import DedupSystem, IndexCorruptError
 
-
 class IndexLockedError(Exception):
-    """Another run is using this index."""
-
 
 class IndexLock:
-    """
-    Stops two runs from overwriting each other's index. Creating the lock
-    file fails if it already exists, which is an atomic check-and-set.
-    If a run was killed hard, delete the .lock file by hand.
-    """
-
     def __init__(self, index_file):
         self.path = os.path.abspath(index_file) + ".lock"
         self.fd = None
@@ -155,7 +116,7 @@ def run_verify(system):
 
 
 def run_command(args):
-    """Load the index and run the chosen command."""
+   
     try:
         system = DedupSystem(index_file=args.index, seed=args.seed)
     except IndexCorruptError as err:
@@ -196,13 +157,13 @@ def main(argv=None):
     if args.min_size < 0:
         parser.error("--min-size cannot be negative")
 
-    # File names that are not valid Unicode must not crash print().
+
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(errors="backslashreplace")
 
     try:
-        if args.command in ("scan", "remove"):       # these change the index
+        if args.command in ("scan", "remove"):      
             with IndexLock(args.index):
                 return run_command(args)
         return run_command(args)
@@ -212,11 +173,10 @@ def main(argv=None):
     except KeyboardInterrupt:
         print("\nInterrupted. Progress made so far was saved.")
         return 1
-    except OSError as err:                           # e.g. read-only folder, disk full
+    except OSError as err:                           
         print(f"ERROR: {err.strerror or err}"
               + (f" ({err.filename})" if err.filename else ""))
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -118,10 +118,3 @@ O(N) overall: about 20-40 bits per different content in the filter, plus the ind
 | Cuckoo filter full | Rebuilt at least twice as big; a failed insert never loses data |
 | Filter false positive | Caught by the exact index |
 
-## Known limits
-
-- `scan` skips a file whose size and modified time are unchanged, so an edit that keeps both is missed by `scan`. `verify` still catches it. Use `--rehash` to force a re-read.
-- If an original file disappears and another copy of the same content is scanned later, the missing original is dropped from the index quietly, so `verify` will not list it as missing.
-- If a run is killed hard (power cut), a leftover `index.json.lock` must be deleted by hand.
-- A file that changes while it is being read can produce an inconsistent hash.
-- On case-insensitive filesystems other than Windows (for example default macOS), two spellings of the same path count as two files. Deleting stays safe because of the `samefile` check.
