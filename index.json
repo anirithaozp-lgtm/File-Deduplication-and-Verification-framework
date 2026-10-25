@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "files": {
+    "c:\\users\\smera mridula j\\desktop\\dsa_cuckoo_git\\file-deduplication-and-verification-framework\\test_files\\file1.txt": {
+      "path": "C:\\Users\\Smera Mridula J\\Desktop\\dsa_cuckoo_git\\File-Deduplication-and-Verification-framework\\test_files\\file1.txt",
+      "digest": "7cc6fdf39676f64cc49c9901a6971ec7370674538528c69b99f057445f0d595e",
+      "raw": "7cc6fdf39676f64cc49c9901a6971ec7370674538528c69b99f057445f0d595e",
+      "size": 45,
+      "mtime_ns": 1792865323997237000
+    },
+    "c:\\users\\smera mridula j\\desktop\\dsa_cuckoo_git\\file-deduplication-and-verification-framework\\test_files\\file2.txt": {
+      "path": "C:\\Users\\Smera Mridula J\\Desktop\\dsa_cuckoo_git\\File-Deduplication-and-Verification-framework\\test_files\\file2.txt",
+      "digest": "7cc6fdf39676f64cc49c9901a6971ec7370674538528c69b99f057445f0d595e",
+      "raw": "01c31e4116e2c3c438ca84e53ef3a0f09e3fe6c542b15f0ada5d7de9cf4fe073",
+      "size": 53,
+      "mtime_ns": 1792865337140765300
+    },
+    "c:\\users\\smera mridula j\\desktop\\dsa_cuckoo_git\\file-deduplication-and-verification-framework\\test_files\\file3.txt": {
+      "path": "C:\\Users\\Smera Mridula J\\Desktop\\dsa_cuckoo_git\\File-Deduplication-and-Verification-framework\\test_files\\file3.txt",
+      "digest": "b2aab248da93bff66d47b9e07eed5dafafd71daac0759ae4490bbbbec0f772ca",
+      "raw": "b2aab248da93bff66d47b9e07eed5dafafd71daac0759ae4490bbbbec0f772ca",
+      "size": 14,
+      "mtime_ns": 1792865349327978900
+    },
+    "c:\\users\\smera mridula j\\desktop\\dsa_cuckoo_git\\file-deduplication-and-verification-framework\\test_files\\file4.txt": {
+      "path": "C:\\Users\\Smera Mridula J\\Desktop\\dsa_cuckoo_git\\File-Deduplication-and-Verification-framework\\test_files\\file4.txt",
+      "digest": "6174490c5ffbd68d0749391188e2a6b73a046f8d98c00028bf1aeb1db1bce001",
+      "raw": "6174490c5ffbd68d0749391188e2a6b73a046f8d98c00028bf1aeb1db1bce001",
+      "size": 30,
+      "mtime_ns": 1792865365602505100
+    }
+  }
+}
